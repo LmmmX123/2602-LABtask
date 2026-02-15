@@ -22,8 +22,10 @@
 #include "usart.h"
 #include "tim.h"
 #include "gpio.h"
-#include "stdio.h"
+
 /* Private includes ----------------------------------------------------------*/
+#include "stdio.h"
+#include "string.h"
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -46,16 +48,25 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t slec_flag = 0;	//storage of the curently change of the mode
-char highli[4]={0,0,0,0};	// to provide the interaction,to let the user see what mode they chose
-uint8_t rx_data;				// to store the message send from the usart
-const char menu[4][32] = {	//which is the main manu of the function instruction
+uint8_t slec_flag = 0;
+char highli[4]={0,0,0,0};
+uint8_t rx_data;
+uint8_t cut_down = 0;
+uint8_t  rx_buf[64];
+uint16_t rx_cnt = 0;
+uint8_t  rx_line_done = 0;
+uint8_t  rx_temp;
+
+const char menu[4][32] = {
 	"1. OpenMV 1eye distance detact",
 	"2. PID control MG90 align cam",
-	"3. output the data in flash",
+	"3. output to flash",
 	"4. erase flash"
 };
 
+char uart1_rx_buf[128] = {0};
+uint16_t uart1_rx_idx = 0;
+uint8_t uart1_rx_complete = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,103 +78,118 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-int fputc(int ch, FILE *f)	//redirectiion to enable printf function
+int fputc(int ch, FILE *f)
 {
   HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
   return ch;
 }
 
-void update_highli(void)	//ui:interraction to hilight the chosen one
+void update_highli(void)
 {
     for(int i=0; i<4; i++) highli[i] = ' ';
     highli[slec_flag] = '*';
 }
 
-void display_menu(){	//ui:display the main manu
-printf("\033[2J\033[H");
-printf("========== TALOS ==========\r\n");
-for(int i=0; i<4; i++)
-	printf("%c  %s\r\n", highli[i], menu[i]);
-printf("===========================\r\n");
-printf("up down by arrow key,slect by enter\r\n");
-//HAL_Delay(1000);
+void display_menu(void)
+{
+	printf("\033[2J\033[H");
+	printf("========== TALOS ==========\r\n");
+	for(int i=0; i<4; i++)
+		printf("%c  %s\r\n", highli[i], menu[i]);
+	printf("===========================\r\n");
+	printf("up down by arrow key, select by enter\r\n");
 }
 
-
-
-
-
-
-/*
-void function_enter(uint8_t flag){//the main entrance of the function
-	if (flag == 1){
-		char see_mode = flag + 49;
-		HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);
-	}
-	else if(flag == 2){
-	}
-}*/
-
-
-
-
-
-
-
-void key_proc(uint8_t ch)	//process the key input to the change of the variable
+void key_proc(uint8_t ch)
 {
-		//if(ch == 0x003);
-		//finish the mode 2,because it is continuous,***this place is uncomplete***
-    /*else*/if(ch == 'A' || ch == 'D'){  //when the user input the up and left arrow key
-        if(slec_flag > 0){
+    if(ch == 'A' || ch == 'D')
+    {
+        if(slec_flag > 0)
+        {
 					slec_flag--;
-					update_highli();}
-				else if(slec_flag == 0){	//the mode can't smaller than 1 
-					//printf("input error,the mode can only be chose between 1~4");
-					//HAL_Delay(1000);
+					update_highli();
+        }
+        else
+        {
+					printf("input error,the mode can only be chose between 1~4");
 					slec_flag = 0;
-				}
+        }
 				printf("\033[2J\033[H");
         display_menu();
-				//printf("input error,the mode can only be chose between 1~4");
     }
-    else if(ch == 'B' || ch == 'C'){  //when the user input the left and down arrow key
-        if(slec_flag < 3){
+    else if(ch == 'B' || ch == 'C')
+    {
+        if(slec_flag < 3)
+        {
 					slec_flag++;
 					update_highli();
-				}
-				else if(slec_flag == 3){	//the mode can't bigger than 4
-					//printf("input error,the mode can only be chose between 1~4");		
-					//HAL_Delay(1000);
+        }
+        else
+        {
 					slec_flag = 3;
-				}
-				printf("\033[2J\033[H");					
+        }
+				printf("\033[2J\033[H");
         display_menu();
-				//printf("input error,the mode can only be chose between 1~4");
     }
-    else if(ch == '\r'){  // when the user input enter key
-        printf("\r\nis doing the mode：%d\r\n", slec_flag + 1);		
-				//function_enter(slec_flag+1);
-				char see_mode = slec_flag + 49;
-				HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);
-        //show to the user mode they are doing	
+    else if(ch == '\r')
+    {
+			printf("\r\nis doing the mode:%d\r\n", slec_flag + 1);
+			char see_mode = slec_flag + 48;
+			HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);
     }
+		else if (ch == 3)
+		{
+				slec_flag = 0;
+				update_highli();
+				display_menu();
+				printf("\r\ncut down the chosen mode\r\n");
+				HAL_UART_Transmit(&huart1,(uint8_t*)&cut_down, 1, 100);
+		}
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if(huart->Instance == LPUART1)
-		//to check are the input comes from the LPUART,because thisprogram has two divice use the USART
     {
-        if(rx_data != 0x1B && rx_data != '[')
-				//the arrow input can divide to 3part,the 0x1B the '[' and the A/B/C/D,
-				//so the only thing we need to do is detect the last input
+				uint8_t ch = rx_data;
+				HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
+        if(ch != 0x1B && ch != '[')
         {
-            key_proc(rx_data);
+            key_proc(ch);
         }
-			HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);//the user may not input once
-		}
+    }
+    else if(huart->Instance == USART1)
+    {
+				HAL_UART_Receive_IT(&huart1, &rx_temp, 1);
+
+				if(rx_temp == 0x00 || rx_temp == 0xFF)
+				{
+						return;
+				}
+
+				if(rx_temp == '\n' || rx_temp == '\r')
+				{
+						if(rx_cnt > 0)
+						{
+								rx_buf[rx_cnt] = '\0';
+								rx_line_done = 1;
+						}
+						rx_cnt = 0;
+				}
+				else
+				{
+						if(rx_cnt < 63)
+						{
+								rx_buf[rx_cnt++] = rx_temp;
+						}
+						else
+						{
+								rx_cnt = 0;
+						}
+				}
+    }
 }
+/* USER CODE END 4 */
 
 /* USER CODE END 0 */
 
@@ -173,58 +199,40 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
-	//uint8_t byteNumber = 1;
-
-	
-
 
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_LPUART1_UART_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
+
   /* USER CODE BEGIN 2 */
-	// init the UI
 	update_highli();
 	display_menu();
-	// 开启接收中断
 	HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
-
+	HAL_UART_Receive_IT(&huart1, &rx_temp, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-		
+	while (1)
+	{
+		if(rx_line_done == 1)
+		{
+			printf("receive from OpenMV:%s\r\n", rx_buf);
+			rx_line_done = 0;
+		}
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
-
 /**
   * @brief System Clock Configuration
   * @retval None

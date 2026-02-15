@@ -39,3 +39,4 @@ demo\main.o: ../Core/Inc/usart.h
 demo\main.o: ../Core/Inc/tim.h
 demo\main.o: ../Core/Inc/gpio.h
 demo\main.o: D:\KEIL-MDK\ARM\ARMCC\Bin\..\include\stdio.h
+demo\main.o: D:\KEIL-MDK\ARM\ARMCC\Bin\..\include\string.h

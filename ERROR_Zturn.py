@@ -7,7 +7,7 @@ sensor.skip_frames(time=500)
 sensor.set_auto_gain(False)
 sensor.set_auto_whitebal(False)
 
-BLACK_THRESH = (0, 15)
+BLACK_THRESH = (0, 20)
 MIN_AREA = 200
 OFFSET = 10  # 向内偏移的像素数，可根据实际情况调整
 
