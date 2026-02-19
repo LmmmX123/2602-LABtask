@@ -29,6 +29,8 @@ demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i2c_ex.h
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr.h
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr_ex.h
+demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_spi.h
+demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_spi_ex.h
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim.h
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h
 demo\stm32g4xx_hal_cortex.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h

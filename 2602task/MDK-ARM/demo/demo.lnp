@@ -4,6 +4,7 @@
 "demo\gpio.o"
 "demo\i2c.o"
 "demo\usart.o"
+"demo\spi.o"
 "demo\tim.o"
 "demo\stm32g4xx_it.o"
 "demo\stm32g4xx_hal_msp.o"
@@ -27,6 +28,8 @@
 "demo\stm32g4xx_hal_cortex.o"
 "demo\stm32g4xx_hal_uart.o"
 "demo\stm32g4xx_hal_uart_ex.o"
+"demo\stm32g4xx_hal_spi.o"
+"demo\stm32g4xx_hal_spi_ex.o"
 "demo\system_stm32g4xx.o"
 --library_type=microlib --strict --scatter "demo\demo.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols

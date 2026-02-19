@@ -30,12 +30,15 @@ demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i2c.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_i2c_ex.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_pwr_ex.h
+demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_spi.h
+demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_spi_ex.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h
 demo\main.o: ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h
 demo\main.o: ../Core/Inc/i2c.h
 demo\main.o: ../Core/Inc/usart.h
+demo\main.o: ../Core/Inc/spi.h
 demo\main.o: ../Core/Inc/tim.h
 demo\main.o: ../Core/Inc/gpio.h
 demo\main.o: D:\KEIL-MDK\ARM\ARMCC\Bin\..\include\stdio.h
