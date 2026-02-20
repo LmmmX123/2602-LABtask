@@ -71,14 +71,26 @@ uint8_t uart1_rx_complete = 0;
 
 // Flash's variable
 uint32_t flash_ptr = 0;
-#define FLASH_ADDR 0x000000
-#define SECTOR_SIZE 4096 // W25Q64
+#define FLASH_START_ADDR  0x000000
+#define FLASH_SECTOR_SIZE 4096  // W25Q64 ????
+#define FLASH_END_ADDR    (FLASH_START_ADDR + FLASH_SECTOR_SIZE - 1)
+
+
+// ======= PID=======
+float Kp = 1.5f;
+float Ki = 0.0f;
+float Kd = 0.3f;
+
+float pid_output = 0;
+int last_error = 0;
+
+
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-
 /* USER CODE BEGIN PFP */
 
 	// Flash busy wait function 
@@ -103,7 +115,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+			
 			void DELAY_1MS(void)
 			{
 					for(uint32_t i = 0; i < 56000; i++)
@@ -111,7 +123,8 @@ void SystemClock_Config(void);
 							__NOP();
 					}
 			}
-
+				
+			
 			// Flash check the status
 			uint8_t Flash_CheckBusy(void)
 			{
@@ -201,7 +214,7 @@ void SystemClock_Config(void);
 			{
 					uint16_t str_len = strlen(str); // aculate the length
 					// keep the addition in control
-					if (addr + str_len + 1 > FLASH_ADDR + SECTOR_SIZE) 
+					if (addr + str_len + 1 > FLASH_END_ADDR) 
 					{
 							printf("Flash: No space for string\r\n");
 							return;
@@ -217,7 +230,7 @@ void SystemClock_Config(void);
 					if (buf_len == 0) return 0;
 					uint16_t i = 0;		//record the place
 					buf[0] = '\0';		//avoid the mess output
-					while (i < buf_len - 1 && addr < FLASH_ADDR + SECTOR_SIZE) 
+					while (i < buf_len - 1 && addr < FLASH_END_ADDR) 
 					{
 							buf[i] = Flash_ReadByte(addr);
 							if (buf[i] == '\0') break; // exit the loop decisively
@@ -240,7 +253,7 @@ void SystemClock_Config(void);
 							printf("Flash: Empty string, skip\r\n");
 							return;
 					}
-					if (flash_ptr + str_len + 1 > FLASH_ADDR + SECTOR_SIZE) 
+					if (flash_ptr + str_len + 1 > FLASH_END_ADDR) 
 					{
 							printf("Flash: Sector full! Can't write more data\r\n");
 							return;
@@ -260,11 +273,11 @@ void SystemClock_Config(void);
 					}
 					else 
 					{
-							uint32_t curr_addr = FLASH_ADDR;
+							uint32_t curr_addr = FLASH_START_ADDR;
 							uint16_t str_idx = 1;
 							char read_buf[64]; 
 							
-							while (curr_addr < flash_ptr && curr_addr < FLASH_ADDR + SECTOR_SIZE) 
+							while (curr_addr < flash_ptr && curr_addr < FLASH_END_ADDR) 
 							{
 									uint16_t len = Flash_ReadString(curr_addr, read_buf, sizeof(read_buf));
 									if (len == 0) break;
@@ -301,12 +314,49 @@ void SystemClock_Config(void);
 							}
 					}
 
-					flash_ptr = 0;  
-					uint8_t check = Flash_ReadByte(0);
+					flash_ptr = FLASH_START_ADDR;  
+					uint8_t check = Flash_ReadByte(FLASH_START_ADDR);
 					printf("Erase check: addr0 = 0x%02X\r\n", check); 
 			}
 																		
 
+												
+									// FLASH INIT scan the flash to find the last worse byte
+									void Flash_Init(void)
+									{
+										uint32_t curr_addr = FLASH_START_ADDR;
+										char read_buf[64];
+										
+										// scan the FLASH until meet the umpty bytes
+										while (curr_addr < FLASH_END_ADDR)
+										{
+											uint8_t byte = Flash_ReadByte(curr_addr);
+											// W25Q64uncode bytes is 0xFF,if it meet means that its at the end of the data
+											if (byte == 0xFF)
+											{
+												flash_ptr = curr_addr;  // recovery
+												printf("FLASH init done,already used addr:0x%06lX,next addr will be:0x%06lX", 
+															 (unsigned long)curr_addr, (unsigned long)flash_ptr);
+												return;
+											}
+											
+											if (byte == '\0')
+											{
+												curr_addr++;
+												continue;
+											}
+											
+											Flash_ReadString(curr_addr, read_buf, sizeof(read_buf));
+											curr_addr += strlen(read_buf) + 1;
+										}
+										
+										// the place is full
+										flash_ptr = FLASH_END_ADDR;
+										printf("FLASHis full ,init done\r\n");
+									}			
+			
+			
+			
 
 int fputc(int ch, FILE *f)
 {
@@ -367,7 +417,7 @@ void key_proc(uint8_t ch)
 			char see_mode = slec_flag + 48;
 			HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);
 			if(slec_flag == 2) Func3_Read_All();    
-			if(slec_flag == 3) Flash_EraseSector(0); 
+			if(slec_flag == 3) Flash_EraseSector(FLASH_START_ADDR); 
     }
 		else if (ch == 3)
 		{
@@ -423,6 +473,28 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 
+
+
+						// ===================== PID ???? =====================
+						int PID_Calc(int target, int current)
+						{
+								int error = target - current;
+
+								pid_output = Kp * error
+													 + Kd * (error - last_error);
+
+								last_error = error;
+
+								if(pid_output >  500) pid_output =  500;
+								if(pid_output < -500) pid_output = -500;
+
+								return (int)pid_output;
+						}
+
+
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -465,28 +537,43 @@ int main(void)
 	display_menu();
 	HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
 	HAL_UART_Receive_IT(&huart1, &rx_temp, 1);
+	Flash_Init();
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
   /* USER CODE END 2 */
 
   /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+	/* USER CODE BEGIN WHILE */
+	while (1)
+	{
+		/* USER CODE END WHILE */
 		if(rx_line_done == 1)
-			{
+		{
 				rx_line_done = 0;
 
-				//printf("OpenMV receive:%s\r\n", rx_buf);
-
-				// ====================== Flash ======================
 				if(slec_flag == 0)
 				{
-					Func1_Add_1();   
+						Func1_Add_1();   
 				}
-			}
-    /* USER CODE BEGIN 3 */
+				else if(slec_flag == 1)
+				{
+						int error_val = 0;
+					if(sscanf((char*)rx_buf, "ERROR:%d", &error_val) == 1)
+						{
+								int pid_out = PID_Calc(0, error_val);
+								
+								int pwm_val = 1500 + pid_out;
+								
+								if(pwm_val > 2500) pwm_val = 2500;
+								if(pwm_val <  500) pwm_val =  500;
+								
+								__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_val);
+								
+								printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);
+						}
+				}
+		}
+		/* USER CODE BEGIN 3 */
 	}
-  /* USER CODE END 3 */
 }
 
 /**

@@ -1,6 +1,6 @@
 Dependencies for Project 'demo', Target 'demo': (DO NOT MODIFY !)
-F (startup_stm32g431xx.s)(0x6996B41C)(--cpu Cortex-M4.fp -g --apcs=interwork --pd "__MICROLIB SETA 1"-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include--pd "__UVISION_VERSION SETA 524" --pd "_RTE_ SETA 1" --pd "STM32G431xx SETA 1"--list startup_stm32g431xx.lst --xref -o demo\startup_stm32g431xx.o --depend demo\startup_stm32g431xx.d)
-F (../Core/Src/main.c)(0x69972E20)(--c99 -c --cpu Cortex-M4.fp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32G431xx -DUSE_HAL_DRIVER -DSTM32G431xx-o demo\main.o --omf_browse demo\main.crf --depend demo\main.d)
+F (startup_stm32g431xx.s)(0x69987EC7)(--cpu Cortex-M4.fp -g --apcs=interwork --pd "__MICROLIB SETA 1"-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include--pd "__UVISION_VERSION SETA 524" --pd "_RTE_ SETA 1" --pd "STM32G431xx SETA 1"--list startup_stm32g431xx.lst --xref -o demo\startup_stm32g431xx.o --depend demo\startup_stm32g431xx.d)
+F (../Core/Src/main.c)(0x6998818E)(--c99 -c --cpu Cortex-M4.fp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32G431xx -DUSE_HAL_DRIVER -DSTM32G431xx-o demo\main.o --omf_browse demo\main.crf --depend demo\main.d)
 I (../Core/Inc/main.h)(0x6992D8D3)
 I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h)(0x6989DA81)
 I (../Core/Inc/stm32g4xx_hal_conf.h)(0x6996B41B)
@@ -196,7 +196,7 @@ I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim.h)(0x6989DA81)
 I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h)(0x6989DA81)
 I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h)(0x6989DA81)
 I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h)(0x6989DA81)
-F (../Core/Src/tim.c)(0x6992D8D3)(--c99 -c --cpu Cortex-M4.fp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32G431xx -DUSE_HAL_DRIVER -DSTM32G431xx-o demo\tim.o --omf_browse demo\tim.crf --depend demo\tim.d)
+F (../Core/Src/tim.c)(0x69987EC5)(--c99 -c --cpu Cortex-M4.fp -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc -I ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32G4xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_demo-ID:\KEIL-MDK\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32G431xx -DUSE_HAL_DRIVER -DSTM32G431xx-o demo\tim.o --omf_browse demo\tim.crf --depend demo\tim.d)
 I (../Core/Inc/tim.h)(0x6992D8D3)
 I (../Core/Inc/main.h)(0x6992D8D3)
 I (../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h)(0x6989DA81)
