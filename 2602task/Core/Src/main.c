@@ -77,13 +77,13 @@ uint32_t flash_ptr = 0;
 
 
 // ======= PID=======
-float Kp = 1.5f;
-float Ki = 0.0f;
-float Kd = 0.3f;
+float Kp = 1.9f;
+float Ki = 1.0f;
+float Kd = 0.0f;
 
 float pid_output = 0;
 int last_error = 0;
-
+float integral = 0; 
 
 
 
@@ -107,6 +107,8 @@ void SystemClock_Config(void);
 	void Func1_Add_1(void);
 	// Function 3: Read all data
 	void Func3_Read_All(void);
+
+	void Beep_Once_At_Startup(void);
 
 
 /* USER CODE BEGIN PFP */
@@ -355,7 +357,31 @@ void SystemClock_Config(void);
 										printf("FLASHis full ,init done\r\n");
 									}			
 			
-			
+
+
+
+			// =======BEEP(400Hz?800Hz) =======
+			void Beep_Once_At_Startup(void)
+			{
+				__HAL_TIM_SET_PRESCALER(&htim3, 169); 
+				HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); 
+
+				for(uint32_t ms = 0; ms < 1000; ms++)
+				{
+					uint32_t freq = 400 + (ms * 400) / 1000;
+					uint32_t arr = 1000000 / freq - 1;
+					
+					__HAL_TIM_SET_AUTORELOAD(&htim3, arr);
+					__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, arr / 2);
+					
+					DELAY_1MS(); 
+				}
+
+				HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+			}
+
+
+									
 			
 
 int fputc(int ch, FILE *f)
@@ -421,7 +447,6 @@ void key_proc(uint8_t ch)
     }
 		else if (ch == 3)
 		{
-				slec_flag = 0;
 				update_highli();
 				display_menu();
 				printf("\r\ncut down the chosen mode\r\n");
@@ -475,22 +500,26 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 
 
-						// ===================== PID ???? =====================
-						int PID_Calc(int target, int current)
-						{
-								int error = target - current;
+										// ===================== PID  =====================
+										int PID_Calc(int target, int current)
+										{
+												int error = target - current;
 
-								pid_output = Kp * error
-													 + Kd * (error - last_error);
+												integral += error;
+												if (integral > 500) integral = 500;
+												if (integral < -500) integral = -500;
 
-								last_error = error;
+												pid_output = Kp * error
+																	 + Ki * integral
+																	 + Kd * (error - last_error);
 
-								if(pid_output >  500) pid_output =  500;
-								if(pid_output < -500) pid_output = -500;
+												last_error = error;
 
-								return (int)pid_output;
-						}
+												if(pid_output >  400) pid_output =  400;  
+												if(pid_output < -400) pid_output = -400;
 
+												return (int)pid_output;
+										}
 
 
 
@@ -532,7 +561,9 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_SPI3_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+	Beep_Once_At_Startup();
 	update_highli();
 	display_menu();
 	HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
@@ -542,7 +573,7 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+  /* USER CODE BEGIN WHILE */
 	while (1)
 	{
 		/* USER CODE END WHILE */
@@ -556,24 +587,28 @@ int main(void)
 				}
 				else if(slec_flag == 1)
 				{
-						int error_val = 0;
-					if(sscanf((char*)rx_buf, "ERROR:%d", &error_val) == 1)
-						{
-								int pid_out = PID_Calc(0, error_val);
-								
-								int pwm_val = 1500 + pid_out;
-								
-								if(pwm_val > 2500) pwm_val = 2500;
-								if(pwm_val <  500) pwm_val =  500;
-								
-								__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_val);
-								
-								printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);
-						}
+					//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_val);
+					
+int error_val = 0;
+if(sscanf((char*)rx_buf, "ERROR:%d", &error_val) == 1)
+	{
+			int pid_out = PID_Calc(0, error_val);
+			
+			int pwm_val = 1500 + pid_out;
+			
+			if(pwm_val > 2500) pwm_val = 2500;
+			if(pwm_val <  500) pwm_val =  500;
+			
+			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_val);
+			
+			printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);
 				}
+			}
 		}
 		/* USER CODE BEGIN 3 */
-	}
+
+  }
+  /* USER CODE END 3 */
 }
 
 /**
