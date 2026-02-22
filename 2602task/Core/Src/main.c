@@ -49,14 +49,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t slec_flag = 0;
-char highli[4]={0,0,0,0};
-uint8_t rx_data;
-uint8_t cut_down = 0;
-uint8_t  rx_buf[64];
-uint16_t rx_cnt = 0;
-uint8_t  rx_line_done = 0;
-uint8_t  rx_temp;
+uint8_t slec_flag = 0;           // menu selection
+char highli[4]={0,0,0,0};        // Menu highlight markers
+uint8_t rx_data;                 // Single byte for LPUART1 reception
+uint8_t cut_down = 0;            // Stop command for PID control--mode2
+uint8_t  rx_buf[64];             // USART1 received data storage
+uint16_t rx_cnt = 0;             // Counter for USART1 reception
+uint8_t  rx_line_done = 0;       // offer for the complete status of the receiption on USART1
+uint8_t  rx_temp;                // Temporary variable for USART1 reception
 
 const char menu[4][32] = {
 	"1. OpenMV 1eye distance detact",
@@ -65,16 +65,15 @@ const char menu[4][32] = {
 	"4. erase flash"
 };
 
-char uart1_rx_buf[128] = {0};
-uint16_t uart1_rx_idx = 0;
-uint8_t uart1_rx_complete = 0;
+char uart1_rx_buf[128] = {0};		//storage of UART1 receive
+uint16_t uart1_rx_idx = 0;			//index of the UART1 reception
+uint8_t uart1_rx_complete = 0;	//flag of the status of the UART completion
 
-// Flash's variable
-uint32_t flash_ptr = 0;
-#define FLASH_START_ADDR  0x000000
-#define FLASH_SECTOR_SIZE 4096  // W25Q64 ????
-#define FLASH_END_ADDR    (FLASH_START_ADDR + FLASH_SECTOR_SIZE - 1)
-
+// Flash variables
+uint32_t flash_ptr = 0;                      // Next available address to write in Flash
+#define FLASH_START_ADDR  0x000000           // Start address of external SPI Flash
+#define FLASH_SECTOR_SIZE 4096               // Sector size of W25Q64 Flash is 4KB
+#define FLASH_END_ADDR    (FLASH_START_ADDR + FLASH_SECTOR_SIZE - 1) // End of first sector
 
 // ======= PID=======
 float Kp = 1.9f;
@@ -84,7 +83,6 @@ float Kd = 0.0f;
 float pid_output = 0;
 int last_error = 0;
 float integral = 0; 
-
 
 
 /* USER CODE END PV */
@@ -103,11 +101,13 @@ void SystemClock_Config(void);
 	uint8_t Flash_ReadByte(uint32_t addr);
 	// Flash sector erase
 	void Flash_EraseSector(uint32_t addr);
-	// Function 1: Append '1'
+	// Function 1: Appendence all data to the flash
 	void Func1_Add_1(void);
 	// Function 3: Read all data
 	void Func3_Read_All(void);
-
+	
+	
+	//the beep setting that only need be done for once
 	void Beep_Once_At_Startup(void);
 
 
@@ -117,12 +117,14 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-			
+
+			//I write this fuction is because HAL_Delay is blooking,so I've done tihis because the basic loop can be interupt
+			//In addition this delay function depense on my clock frequency,I set it in 170MHz
 			void DELAY_1MS(void)
 			{
 					for(uint32_t i = 0; i < 56000; i++)
 					{
-							__NOP();
+							__NOP();		//empty operatioon
 					}
 			}
 				
@@ -131,33 +133,33 @@ void SystemClock_Config(void);
 			uint8_t Flash_CheckBusy(void)
 			{
 					uint8_t status = 0;
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-					uint8_t cmd = 0x05; //the reading status command,which means to read the status register
+					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);//let the CS been low,to let it been chosen
+					uint8_t cmd = 0x05;		//the reading status command,which means to read the status register
 					HAL_SPI_Transmit(&hspi3, &cmd, 1, 100);
-					HAL_SPI_Receive(&hspi3, &status, 1, 100);//read the status to the variable"status"
+					HAL_SPI_Receive(&hspi3, &status, 1, 100);		//read the status to the variable"status"
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-					return (status & 0x01); // 1="busy",0="idle";status has a long line ,but the 0x01 & means only read the last byte
+					return (status & 0x01); 		// 1="busy",0="idle";status has a long line ,but the 0x01 & means only read the last byte
 			}
 
 			// mainly enable the FLASH torecord the things in the variable
 			void Flash_WriteEnable(void)
 			{
-					uint8_t cmd = 0x06;//the command that enable the FLASH to free the protection of the reloading and erase
+					uint8_t cmd = 0x06;		//the command that enable the FLASH to free the protection of the reloading and erase
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 					HAL_SPI_Transmit(&hspi3, &cmd, 1, 100);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-					DELAY_1MS(); // need to wait for it
+					DELAY_1MS(); 		// need to wait for it
 			}
 
 			// Flash actually begin to proguamming but only can write 1 byte
 			void Flash_WriteByte(uint32_t addr, uint8_t dat)
 			{
 					Flash_WriteEnable();
-					uint8_t cmd[5] = {0x02,//the command that enables the page programming
-														(uint8_t)((addr >> 16) & 0xFF), // the last 24~18 bytes,
-														(uint8_t)((addr >> 8) & 0xFF),  // the last 16~8 bytes,
-														(uint8_t)(addr & 0xFF),         // the last 8~1 bytes,
-														dat};//the actually data that need to deliver
+					uint8_t cmd[5] = {0x02,		//the command that enables the page programming
+														(uint8_t)((addr >> 16) & 0xFF), 	// the last 24~18 bytes,
+														(uint8_t)((addr >> 8) & 0xFF),  	// the last 16~8 bytes,
+														(uint8_t)(addr & 0xFF),         	// the last 8~1 bytes,
+														dat};			//the actually data that need to deliver
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 					HAL_SPI_Transmit(&hspi3, cmd, 5, 100);
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
@@ -165,18 +167,18 @@ void SystemClock_Config(void);
 					// to avoid been stuck ,need to check the status curruntly
 					while(Flash_CheckBusy())
 					{
-							DELAY_1MS(); // 1 for 1ms,so this loop will be fast,to avoid wasting time
+							DELAY_1MS(); 	// 1 for 1ms,so this loop will be fast,to avoid wasting time
 					}
 			}
 
 			// Flash function that can read a byte from the flash
 			uint8_t Flash_ReadByte(uint32_t addr)
 			{
-					uint8_t cmd[4] = {0x03,//the command that enables it to read data
+					uint8_t cmd[4] = {0x03,		//the command that enables it to read data
 														(uint8_t)((addr >> 16) & 0xFF),//this are same to the writing functiong
 														(uint8_t)((addr >> 8) & 0xFF),
 														(uint8_t)(addr & 0xFF)};
-					uint8_t dat;//name one to let the receive data has a place to store
+					uint8_t dat;		//name one to let the receive data has a place to store
 					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 					HAL_SPI_Transmit(&hspi3, cmd, 4, 100);
 					HAL_SPI_Receive(&hspi3, &dat, 1, 100);
@@ -187,9 +189,9 @@ void SystemClock_Config(void);
 			//as the fuction name goes,it can transmit a bunch of bytes
 			void Flash_WriteBytes(uint32_t addr, const uint8_t *buf, uint16_t len) 
 			{
-					if (len == 0) return;//no need to use this
+					if (len == 0) return;		//no need to use this
 					uint16_t bytes_written = 0;
-					#define PAGE_SIZE 256 // W25Q64 has 256 pages
+					#define PAGE_SIZE 256 		// W25Q64 has 256 pages
 					while (bytes_written < len) 
 					{
 							//check if you cross the line
@@ -205,16 +207,16 @@ void SystemClock_Config(void);
 							HAL_SPI_Transmit(&hspi3, (uint8_t*)buf + bytes_written, write_len, 100);//the most important sentense that actually done the transmit
 							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 							
-							while (Flash_CheckBusy()); //waiting for the command been done
-							addr += write_len;	//move afterward the address
-							bytes_written += write_len;	//update
+							while (Flash_CheckBusy()); 		//waiting for the command been done
+							addr += write_len;		//move afterward the address
+							bytes_written += write_len;		//update
 					}
 			}
 
 			// the most effectible fnction that take charge in the FLASH writting
 			void Flash_WriteString(uint32_t addr, const char *str) 
 			{
-					uint16_t str_len = strlen(str); // aculate the length
+					uint16_t str_len = strlen(str); 	// aculate the length
 					// keep the addition in control
 					if (addr + str_len + 1 > FLASH_END_ADDR) 
 					{
@@ -249,43 +251,46 @@ void SystemClock_Config(void);
 			// the main entrance of the function 1
 			void Func1_Add_1(void)
 			{
-					uint16_t str_len = strlen((const char*)rx_buf); 
-					if (str_len == 0) 
+					uint16_t str_len = strlen((const char*)rx_buf); 		//culculate the lenth
+					if (str_len == 0) 		//usless data
 					{
 							printf("Flash: Empty string, skip\r\n");
 							return;
 					}
-					if (flash_ptr + str_len + 1 > FLASH_END_ADDR) 
+					if (flash_ptr + str_len + 1 > FLASH_END_ADDR) 		//valid data nut the sector is not
 					{
-							printf("Flash: Sector full! Can't write more data\r\n");
+							printf("Flash: Sector full! Can't write more data\r\n");		//feedback to show the problrm
 							return;
 					}
-					Flash_WriteString(flash_ptr, (const char*)rx_buf);
-					flash_ptr += str_len + 1;
+					Flash_WriteString(flash_ptr, (const char*)rx_buf);		//write the data to the flash
+					flash_ptr += str_len + 1;		// Update pointer to next free address
 					printf("Flash written: %s | Next addr: %lu\r\n", rx_buf, (unsigned long)flash_ptr);
 			}
 
-			// the main entrance of the function 3
+			// the main entrance of the function 3,that need to show all data that are writen in flash
 			void Func3_Read_All(void)
 			{
 					printf("\r\n==== Flash All Data ====\r\n");
-					if (flash_ptr == 0) 
+					if (flash_ptr == 0) 		//when there are empty in the FLASH
 					{
 							printf("No data stored in Flash!\r\n");
 					}
 					else 
 					{
-							uint32_t curr_addr = FLASH_START_ADDR;
-							uint16_t str_idx = 1;
-							char read_buf[64]; 
+							uint32_t curr_addr = FLASH_START_ADDR;		// Start read from Flash start addr
+							uint16_t str_idx = 1; 	// String index
+							char read_buf[64]; 			// read string
 							
 							while (curr_addr < flash_ptr && curr_addr < FLASH_END_ADDR) 
+							// check not over written addr or not over Flash sector
 							{
+									// Read string from current addr
 									uint16_t len = Flash_ReadString(curr_addr, read_buf, sizeof(read_buf));
-									if (len == 0) break;
+									if (len == 0) break;		// No string
 									printf("String %d: %s (addr: %lu, len: %u)\r\n", str_idx++, read_buf, (unsigned long)curr_addr, len);
-									curr_addr += len + 1; 
+								curr_addr += len + 1; 		// Update addr to next string :len + null
 							}
+							// Print all data
 							printf("Total strings: %d | Used bytes: %lu\r\n", str_idx - 1, (unsigned long)flash_ptr);
 					}
 					printf("\r\n=======================\r\n");
@@ -294,109 +299,110 @@ void SystemClock_Config(void);
 			// fnction that take charge in the FLASH erasing
 			void Flash_EraseSector(uint32_t addr)
 			{
-					Flash_WriteEnable();
-					uint8_t cmd[4] = {0x20,
-														(uint8_t)((addr >> 16) & 0xFF),
+					Flash_WriteEnable();			// Enable write before erase
+					uint8_t cmd[4] = {0x20,		//0x20 means Sector Erase
+														(uint8_t)((addr >> 16) & 0xFF),		//same to the other
 														(uint8_t)((addr >> 8) & 0xFF),
 														(uint8_t)(addr & 0xFF)};
 
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-					HAL_SPI_Transmit(&hspi3, cmd, 4, 100);
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);		//low the CS
+					HAL_SPI_Transmit(&hspi3, cmd, 4, 100);			//send the cmd to the flash
+					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);			//high the CS
 
-					uint32_t timeout = 0;
-					while(Flash_CheckBusy())
+					uint32_t timeout = 0;				//enable time counter
+					while(Flash_CheckBusy())		// Wait for erase complete
 					{
 							DELAY_1MS(); 
 							timeout++;
-							if(timeout > 500) 
+							if(timeout > 500) 			// Timeout after 500ms
 							{
-									printf("Flash Erase Timeout! Check SPI connection\r\n");
+									printf("Flash Erase Timeout! Check SPI connection\r\n");// Print timeout err
 									break;
 							}
 					}
 
-					flash_ptr = FLASH_START_ADDR;  
-					uint8_t check = Flash_ReadByte(FLASH_START_ADDR);
-					printf("Erase check: addr0 = 0x%02X\r\n", check); 
+					flash_ptr = FLASH_START_ADDR;  		// Reset Flash next write address to start
+					uint8_t check = Flash_ReadByte(FLASH_START_ADDR);		//use the flash_readbyte to check if the erase has been done already
+					printf("Erase check: addr0 = 0x%02X\r\n", check); 	//print the check result
 			}
 																		
 
 												
-									// FLASH INIT scan the flash to find the last worse byte
-									void Flash_Init(void)
-									{
-										uint32_t curr_addr = FLASH_START_ADDR;
-										char read_buf[64];
-										
-										// scan the FLASH until meet the umpty bytes
-										while (curr_addr < FLASH_END_ADDR)
-										{
-											uint8_t byte = Flash_ReadByte(curr_addr);
-											// W25Q64uncode bytes is 0xFF,if it meet means that its at the end of the data
-											if (byte == 0xFF)
-											{
-												flash_ptr = curr_addr;  // recovery
-												printf("FLASH init done,already used addr:0x%06lX,next addr will be:0x%06lX", 
-															 (unsigned long)curr_addr, (unsigned long)flash_ptr);
-												return;
-											}
-											
-											if (byte == '\0')
-											{
-												curr_addr++;
-												continue;
-											}
-											
-											Flash_ReadString(curr_addr, read_buf, sizeof(read_buf));
-											curr_addr += strlen(read_buf) + 1;
-										}
-										
-										// the place is full
-										flash_ptr = FLASH_END_ADDR;
-										printf("FLASHis full ,init done\r\n");
-									}			
+			// FLASH INIT scan the flash to find the last worse byte and find next free write address
+			void Flash_Init(void)
+			{
+				uint32_t curr_addr = FLASH_START_ADDR;		// Start scan from Flash start addr
+				char read_buf[64];
+				
+				// scan the FLASH until meet the umpty bytes
+				while (curr_addr < FLASH_END_ADDR)	//cannot over the Flash sector
+				{
+					uint8_t byte = Flash_ReadByte(curr_addr);	// Read 1 byte from current addr
+					// W25Q64uncode bytes is 0xFF,if it meet means that its at the end of the data
+					if (byte == 0xFF)
+					{
+						flash_ptr = curr_addr;  // recovery
+						printf("FLASH init done,already used addr:0x%06lX,next addr will be:0x%06lX", 
+									 (unsigned long)curr_addr, (unsigned long)flash_ptr);
+						return;
+					}
+					
+					if (byte == '\0')		// Meet null data, skip
+					{
+						curr_addr++;		// Next addr
+						continue;
+					}
+					
+					Flash_ReadString(curr_addr, read_buf, sizeof(read_buf));		// Read stored string
+					curr_addr += strlen(read_buf) + 1;		// Update address to next string
+				}
+				
+				// the sector is full
+				flash_ptr = FLASH_END_ADDR;			
+				printf("FLASHis full ,init done\r\n");
+			}			
 			
 
 
 
-			// =======BEEP(400Hz?800Hz) =======
+			// =======BEEP(400Hz~800Hz) =======
 			void Beep_Once_At_Startup(void)
 			{
-				__HAL_TIM_SET_PRESCALER(&htim3, 169); 
-				HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); 
+				__HAL_TIM_SET_PRESCALER(&htim3, 169); 			//set the psc,this sentense may be useless because I already done the seeting in the CUBEMX
+				HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); 	//enable the chennel
 
 				for(uint32_t ms = 0; ms < 1000; ms++)
 				{
-					uint32_t freq = 400 + (ms * 400) / 1000;
-					uint32_t arr = 1000000 / freq - 1;
+					uint32_t freq = 400 + (ms * 400) / 1000;	//main change of the frequenccy
+					uint32_t arr = 1000000 / freq - 1;				//change from the frequency to the ARR
 					
-					__HAL_TIM_SET_AUTORELOAD(&htim3, arr);
-					__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, arr / 2);
+					__HAL_TIM_SET_AUTORELOAD(&htim3, arr);		//set the new ARR
+					__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, arr / 2);		//set the CCR to let the PWM keep been 50%, to let the sound been clear
 					
-					DELAY_1MS(); 
+					DELAY_1MS(); 		//delay for 1ms once
 				}
 
-				HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+				HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);		//shut teh channel
 			}
 
 
 									
 			
 
-int fputc(int ch, FILE *f)
+int fputc(int ch, FILE *f)		//redirection to the lpuart
 {
   HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
   return ch;
 }
 
-void update_highli(void)
+
+void update_highli(void)		//as teh name gose ,provide the interaction function
 {
     for(int i=0; i<4; i++) highli[i] = ' ';
     highli[slec_flag] = '*';
 }
 
-void display_menu(void)
+void display_menu(void)		//as the name gose it provide the main manu display
 {
 	printf("\033[2J\033[H");
 	printf("========== TALOS ==========\r\n");
@@ -406,9 +412,9 @@ void display_menu(void)
 	printf("up down by arrow key, select by enter\r\n");
 }
 
-void key_proc(uint8_t ch)
+void key_proc(uint8_t ch)		//the firstly main logic of the input,and show as the display
 {
-    if(ch == 'A' || ch == 'D')
+    if(ch == 'A' || ch == 'D')//up and left
     {
         if(slec_flag > 0)
         {
@@ -423,7 +429,7 @@ void key_proc(uint8_t ch)
 				printf("\033[2J\033[H");
         display_menu();
     }
-    else if(ch == 'B' || ch == 'C')
+    else if(ch == 'B' || ch == 'C')//down and right
     {
         if(slec_flag < 3)
         {
@@ -441,15 +447,15 @@ void key_proc(uint8_t ch)
     {
 			printf("\r\nis doing the mode:%d\r\n", slec_flag + 1);
 			char see_mode = slec_flag + 48;
-			HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);
-			if(slec_flag == 2) Func3_Read_All();    
-			if(slec_flag == 3) Flash_EraseSector(FLASH_START_ADDR); 
+			HAL_UART_Transmit(&huart1,(uint8_t*)&see_mode, 1, 100);				//send the data to UART1(cam)
+			if(slec_flag == 2) Func3_Read_All();    											//begin the mode 3
+			if(slec_flag == 3) Flash_EraseSector(FLASH_START_ADDR); 			//begin the mode 4
     }
 		else if (ch == 3)
 		{
 				update_highli();
 				display_menu();
-				printf("\r\ncut down the chosen mode\r\n");
+				printf("\r\ncut down the chosen mode\r\n");									//shut the keep running mode
 				HAL_UART_Transmit(&huart1,(uint8_t*)&cut_down, 1, 100);
 		}
 }
@@ -460,38 +466,38 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
 				uint8_t ch = rx_data;
 				HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
-        if(ch != 0x1B && ch != '[')
+        if(ch != 0x1B && ch != '[')			//cause of the arrow input's format,it made of 0x1B + '[' and the valid 'A/B/C/D'
         {
             key_proc(ch);
         }
     }
-    else if(huart->Instance == USART1)
+    else if(huart->Instance == USART1)		//recieve from the cam device
     {
-				HAL_UART_Receive_IT(&huart1, &rx_temp, 1);
+				HAL_UART_Receive_IT(&huart1, &rx_temp, 1);		//open the IT first,to avoid lossing the data
 
-				if(rx_temp == 0x00 || rx_temp == 0xFF)
+				if(rx_temp == 0x00 || rx_temp == 0xFF)		//empty data
 				{
 						return;
 				}
 
-				if(rx_temp == '\n' || rx_temp == '\r')
+				if(rx_temp == '\n' || rx_temp == '\r')		//end of one data output--depend on the format of the cam device code
 				{
 						if(rx_cnt > 0)
 						{
-								rx_buf[rx_cnt] = '\0';
-								rx_line_done = 1;
+								rx_buf[rx_cnt] = '\0';		//end the char array to let it be a string
+								rx_line_done = 1;		//create the flag to advance the judgment
 						}
-						rx_cnt = 0;
+						rx_cnt = 0;			//reinit the counter
 				}
 				else
 				{
-						if(rx_cnt < 63)
+						if(rx_cnt < 63)		//cannot let itbe out of the limit
 						{
-								rx_buf[rx_cnt++] = rx_temp;
+								rx_buf[rx_cnt++] = rx_temp;		//storage of the data
 						}
 						else
 						{
-								rx_cnt = 0;
+								rx_cnt = 0;		//reinit the counter
 						}
 				}
     }
@@ -501,6 +507,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 
 										// ===================== PID  =====================
+										//haven't ensure the accurate value**********
 										int PID_Calc(int target, int current)
 										{
 												int error = target - current;
@@ -577,37 +584,37 @@ int main(void)
 	while (1)
 	{
 		/* USER CODE END WHILE */
-		if(rx_line_done == 1)
+		if(rx_line_done == 1)				//the flag has been done
 		{
-				rx_line_done = 0;
+				rx_line_done = 0;				//let it be 0,so it can be used again
 
-				if(slec_flag == 0)
+			if(slec_flag == 0)				//decision: is it mode 1
 				{
-						Func1_Add_1();   
+						Func1_Add_1();   		//do the function
 				}
-				else if(slec_flag == 1)
+				else if(slec_flag == 1)	//decision: is it mode 2
 				{
 					//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_val);
-					
-int error_val = 0;
-if(sscanf((char*)rx_buf, "ERROR:%d", &error_val) == 1)
-	{
-			int pid_out = PID_Calc(0, error_val);
-			
-			int pwm_val = 1500 + pid_out;
-			
-			if(pwm_val > 2500) pwm_val = 2500;
-			if(pwm_val <  500) pwm_val =  500;
-			
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_val);
-			
-			printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);
+				
+					int error_val = 0;
+					if(sscanf((char*)rx_buf, "ERROR:%d", &error_val) == 1)	//receive the valid data
+						{
+								int pid_out = PID_Calc(0, error_val);							//connect the data with the PID control
+								
+								int pwm_val = 1500 + pid_out;
+								
+								if(pwm_val > 2500) pwm_val = 2500;
+								if(pwm_val <  500) pwm_val =  500;
+								
+								__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_val);	//rersult as the PWM output
+								
+								printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);//ossing for debug,and check the logic
+						}
+					}
 				}
-			}
-		}
 		/* USER CODE BEGIN 3 */
 
-  }
+		}
   /* USER CODE END 3 */
 }
 
