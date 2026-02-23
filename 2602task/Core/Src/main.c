@@ -511,25 +511,27 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 										int PID_Calc(int target, int current)
 										{
 												int error = target - current;
-
 												integral += error;
-												if (integral > 500) integral = 500;
-												if (integral < -500) integral = -500;
+												float ideal_out = Kp * error
+																				+ Ki * integral
+																				+ Kd * (error - last_error);
+												float real_out = ideal_out;
+												if(real_out >  400) real_out = 400;
+												if(real_out < -400) real_out =-400;
 
-												pid_output = Kp * error
-																	 + Ki * integral
-																	 + Kd * (error - last_error);
+												float windup_diff = ideal_out - real_out; 
+												integral -= windup_diff / Ki;  				//Integral Back-calculation
+
+												if(integral >  500) integral = 500;
+												if(integral < -500) integral =-500;
 
 												last_error = error;
 
-												if(pid_output >  400) pid_output =  400;  
-												if(pid_output < -400) pid_output = -400;
+												return (int)real_out;
+										}										
 
-												return (int)pid_output;
-										}
-
-
-
+										
+										
 
 /* USER CODE END 0 */
 
