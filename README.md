@@ -71,12 +71,12 @@ flowchart TD
 |------------------|--------------|-----------|----------------|-------------------------------------------|
 | OPENMV（串口通信）  | TX   | PA10    | USART1_RX   | 接收OPENMV发送的测距/ERROR数据              |
 | OPENMV（串口通信  ）| RX    | PA9    | USART1_TX   | 向OPENMV发送功能指令（b'0'/b'1'/b'\x00'）   |
-| W25Q64（SPI Flash）| CS  | PB0    | GPIO_Output   | SPI3片选控制，低电平选中Flash               |
-| W25Q64（SPI Flash）| SCK | PB3   | SPI3_SCK       | SPI3时钟信号                               |
-| W25Q64（SPI Flash）| MISO| PB4    | SPI3_MISO     | STM32接收Flash数据                         |
-| W25Q64（SPI Flash）| MOSI| PB5   | SPI3_MOSI      | STM32向Flash发送数据/指令                   |
-| MG90S舵机          | PWM | PA2    | TIM2_CH3      | 接收PWM信号，控制舵机角度                   |
-| 无源蜂鸣器         | PWM| PB1  | TIM3_CH4         | 接收PWM信号，驱动蜂鸣器鸣叫                  |
+| W25Q128（SPI Flash）| CS  | 板上    | GPIO_Output   | SPI3片选控制，低电平选中Flash               |
+| W25Q128（SPI Flash）| SCK | 板上   | SPI2_SCK       | SPI3时钟信号                               |
+| W25Q128（SPI Flash）| MISO| 板上    | SPI2_MISO     | STM32接收Flash数据                         |
+| W25Q128（SPI Flash）| MOSI| 板上   | SPI2_MOSI      | STM32向Flash发送数据/指令                   |
+| MG90S舵机          | PWM | PA8    | TIM1_CH1      | 接收PWM信号，控制舵机角度                   |
+| 无源蜂鸣器         | PWM| 板上  | TIM2_CH3         | 接收PWM信号，驱动蜂鸣器鸣叫                  |
 | 上位机（串口交互）  | TX   | PA3    | LPUART1_RX   | 接收上位机按键数据（上下键/回车/Ctrl+C）      |
 | 上位机（串口交互）  | RX  | PA2     | LPUART1_TX   | 向上位机发送菜单/调试/数据打印信息            |
 
@@ -106,9 +106,9 @@ flowchart TD
 |--------------|--------------------|----------------------------------|
 | 主控单元     | STM32G431C8T6      | USART1连OPENMV，LPUART1连上位机  |
 | 视觉单元     | OPENMV H7          | USART1，115200波特率8N1          |
-| 执行单元     | MG90S舵机          | TIM2_CH3 PWM输出（1500us对应0°） |
-| 存储单元     | W25Q64 SPI Flash   | SPI3通信，片选PB0，单扇区4KB     |
-| 提示单元     | 无源蜂鸣器         | TIM3_CH4 PWM频率调制              |
+| 执行单元     | MG90S舵机          | TIM1_CH1 PWM输出（1500us对应0°） |
+| 存储单元     | W25Q128 SPI Flash   | SPI3通信，片选PC13，单扇区4KB     |
+| 提示单元     | 无源蜂鸣器         | TIM2_CH3 PWM频率调制              |
 
 ### 开发环境
 - STM32：CubeMX（外设配置）+ Keil MDK-ARM（代码编写/编译）

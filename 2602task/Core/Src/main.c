@@ -133,11 +133,11 @@ void SystemClock_Config(void);
 			uint8_t Flash_CheckBusy(void)
 			{
 					uint8_t status = 0;
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);//let the CS been low,to let it been chosen
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);//let the CS been low,to let it been chosen
 					uint8_t cmd = 0x05;		//the reading status command,which means to read the status register
-					HAL_SPI_Transmit(&hspi3, &cmd, 1, 100);
-					HAL_SPI_Receive(&hspi3, &status, 1, 100);		//read the status to the variable"status"
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+					HAL_SPI_Transmit(&hspi2, &cmd, 1, 100);
+					HAL_SPI_Receive(&hspi2, &status, 1, 100);		//read the status to the variable"status"
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 					return (status & 0x01); 		// 1="busy",0="idle";status has a long line ,but the 0x01 & means only read the last byte
 			}
 
@@ -145,9 +145,9 @@ void SystemClock_Config(void);
 			void Flash_WriteEnable(void)
 			{
 					uint8_t cmd = 0x06;		//the command that enable the FLASH to free the protection of the reloading and erase
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-					HAL_SPI_Transmit(&hspi3, &cmd, 1, 100);
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+					HAL_SPI_Transmit(&hspi2, &cmd, 1, 100);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 					DELAY_1MS(); 		// need to wait for it
 			}
 
@@ -160,9 +160,9 @@ void SystemClock_Config(void);
 														(uint8_t)((addr >> 8) & 0xFF),  	// the last 16~8 bytes,
 														(uint8_t)(addr & 0xFF),         	// the last 8~1 bytes,
 														dat};			//the actually data that need to deliver
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-					HAL_SPI_Transmit(&hspi3, cmd, 5, 100);
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+					HAL_SPI_Transmit(&hspi2, cmd, 5, 100);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
 					// to avoid been stuck ,need to check the status curruntly
 					while(Flash_CheckBusy())
@@ -179,10 +179,10 @@ void SystemClock_Config(void);
 														(uint8_t)((addr >> 8) & 0xFF),
 														(uint8_t)(addr & 0xFF)};
 					uint8_t dat;		//name one to let the receive data has a place to store
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-					HAL_SPI_Transmit(&hspi3, cmd, 4, 100);
-					HAL_SPI_Receive(&hspi3, &dat, 1, 100);
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+					HAL_SPI_Transmit(&hspi2, cmd, 4, 100);
+					HAL_SPI_Receive(&hspi2, &dat, 1, 100);
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 					return dat;
 			}
 
@@ -202,10 +202,10 @@ void SystemClock_Config(void);
 							
 							Flash_WriteEnable();
 							uint8_t cmd[4] = {0x02, (addr>>16)&0xFF, (addr>>8)&0xFF, addr&0xFF};
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-							HAL_SPI_Transmit(&hspi3, cmd, 4, 100);
-							HAL_SPI_Transmit(&hspi3, (uint8_t*)buf + bytes_written, write_len, 100);//the most important sentense that actually done the transmit
-							HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+							HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+							HAL_SPI_Transmit(&hspi2, cmd, 4, 100);
+							HAL_SPI_Transmit(&hspi2, (uint8_t*)buf + bytes_written, write_len, 100);//the most important sentense that actually done the transmit
+							HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 							
 							while (Flash_CheckBusy()); 		//waiting for the command been done
 							addr += write_len;		//move afterward the address
@@ -305,9 +305,9 @@ void SystemClock_Config(void);
 														(uint8_t)((addr >> 8) & 0xFF),
 														(uint8_t)(addr & 0xFF)};
 
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);		//low the CS
-					HAL_SPI_Transmit(&hspi3, cmd, 4, 100);			//send the cmd to the flash
-					HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);			//high the CS
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);		//low the CS
+					HAL_SPI_Transmit(&hspi2, cmd, 4, 100);			//send the cmd to the flash
+					HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);			//high the CS
 
 					uint32_t timeout = 0;				//enable time counter
 					while(Flash_CheckBusy())		// Wait for erase complete
@@ -368,21 +368,21 @@ void SystemClock_Config(void);
 			// =======BEEP(400Hz~800Hz) =======
 			void Beep_Once_At_Startup(void)
 			{
-				__HAL_TIM_SET_PRESCALER(&htim3, 169); 			//set the psc,this sentense may be useless because I already done the seeting in the CUBEMX
-				HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); 	//enable the chennel
+				__HAL_TIM_SET_PRESCALER(&htim2, 169); 			//set the psc,this sentense may be useless because I already done the seeting in the CUBEMX
+				HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); 	//enable the chennel
 
 				for(uint32_t ms = 0; ms < 1000; ms++)
 				{
 					uint32_t freq = 400 + (ms * 400) / 1000;	//main change of the frequenccy
 					uint32_t arr = 1000000 / freq - 1;				//change from the frequency to the ARR
 					
-					__HAL_TIM_SET_AUTORELOAD(&htim3, arr);		//set the new ARR
-					__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, arr / 2);		//set the CCR to let the PWM keep been 50%, to let the sound been clear
+					__HAL_TIM_SET_AUTORELOAD(&htim2, arr);		//set the new ARR
+					__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, arr / 2);		//set the CCR to let the PWM keep been 50%, to let the sound been clear
 					
 					DELAY_1MS(); 		//delay for 1ms once
 				}
 
-				HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);		//shut teh channel
+				HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);		//shut teh channel
 			}
 
 
@@ -569,16 +569,16 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
-  MX_SPI3_Init();
-  MX_TIM3_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 	Beep_Once_At_Startup();
 	update_highli();
 	display_menu();
 	HAL_UART_Receive_IT(&hlpuart1, &rx_data, 1);
 	HAL_UART_Receive_IT(&huart1, &rx_temp, 1);
+	for (int c=1;c <= 20;c++)DELAY_1MS();
 	Flash_Init();
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -608,7 +608,7 @@ int main(void)
 								if(pwm_val > 2500) pwm_val = 2500;
 								if(pwm_val <  500) pwm_val =  500;
 								
-								__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_val);	//rersult as the PWM output
+								__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, pwm_val);	//rersult as the PWM output
 								
 								printf("Error:%4d  PID:%4d  PWM:%4d\r\n", error_val, pid_out, pwm_val);//ossing for debug,and check the logic
 						}
