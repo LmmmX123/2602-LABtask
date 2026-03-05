@@ -76,8 +76,8 @@ uint32_t flash_ptr = 0;                      // Next available address to write 
 #define FLASH_END_ADDR    (FLASH_START_ADDR + FLASH_SECTOR_SIZE - 1) // End of first sector
 
 // ======= PID=======
-float Kp = 1.9f;
-float Ki = 1.0f;
+float Kp = 4.0f;	// or 2 for the openmv
+float Ki = 2.0f;
 float Kd = 0.0f;
 
 float pid_output = 0;
