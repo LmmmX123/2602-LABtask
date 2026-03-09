@@ -57,6 +57,7 @@ uint8_t  rx_buf[64];             // USART1 received data storage
 uint16_t rx_cnt = 0;             // Counter for USART1 reception
 uint8_t  rx_line_done = 0;       // offer for the complete status of the receiption on USART1
 uint8_t  rx_temp;                // Temporary variable for USART1 reception
+uint32_t last_pid_time = 0;			 //Prepare for the D of the PID controling
 
 const char menu[4][32] = {
 	"1. OpenMV 1eye distance detact",
@@ -505,16 +506,23 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 
 
-
 										// ===================== PID  =====================
 										//haven't ensure the accurate value**********
 										int PID_Calc(int target, int current)
 										{
+												uint32_t current_time = HAL_GetTick();
+												float dt = (current_time - last_pid_time) / 1000.0f;
+												last_pid_time = current_time;
+												if(dt <= 0.0001f) dt = 0.001f;
 												int error = target - current;
-												integral += error;
-												float ideal_out = Kp * error
-																				+ Ki * integral
-																				+ Kd * (error - last_error);
+												integral += error * dt;
+												float derivative = (error - last_error) / dt;
+												
+												float p_term = Kp * error;
+												float i_term = Ki * integral;
+												float d_term = Kd * derivative;
+												float ideal_out = p_term + i_term + d_term;
+											
 												float real_out = ideal_out;
 												if(real_out >  400) real_out = 400;
 												if(real_out < -400) real_out =-400;

@@ -13,7 +13,7 @@ BLACK_THRESH = (30, 62)
 MIN_AREA = 50            
 WHITE_FIND = (230,255)
 SAMPLE_RAN = 5
-OFFSET = 10
+OFFSET = 5
 
 # ---新增：中间裁剪参数（仅加这几行）---
 CROP_W = 200  # 裁剪后宽度，可根据需要微调（如180/220）
